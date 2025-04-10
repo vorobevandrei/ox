@@ -2,5 +2,5 @@
 ## Setup
 
 - `uv install`
-- `cp .env.example .env` and fill it
-
+- `cp oxy/.env.example oxy/.env` and fill it
+- `uv run adk web`
