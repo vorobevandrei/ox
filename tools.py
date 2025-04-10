@@ -1,6 +1,8 @@
 from pathlib import Path
 from google.adk.tools.tool_context import ToolContext
 
+from context import OxContext
+
 
 def list_dir(path: str, tool_context: ToolContext) -> str:
     try:
@@ -37,7 +39,8 @@ def read_file(path: str, tool_context: ToolContext) -> str:
 
 
 def _resolve_path(path_str: str, tool_context: ToolContext) -> Path:
-  root = Path(tool_context.state["ox_ctx"]).resolve()
+  ctx: OxContext = tool_context.state["ox_ctx"]
+  root = ctx.root
 
   try:
     target = Path(path_str)
