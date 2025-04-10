@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import os
 from pathlib import Path
 from typing import Any, Optional, Dict
@@ -5,15 +7,12 @@ from typing import Any, Optional, Dict
 from dotenv import load_dotenv
 from google.adk import Runner, Agent
 from google.adk.sessions import InMemorySessionService
-import asyncio
-from google.genai import types
-from google.adk.tools.tool_context import ToolContext
 from google.adk.tools.base_tool import BaseTool
+from google.adk.tools.tool_context import ToolContext
+from google.genai import types
 
 from context import OxContext, CTX_KEY
-from tools import list_dir, read_files
-import logging
-
+from tools import ToolBox
 
 load_dotenv(override=True)
 WORK_DIR = Path(os.environ["WORK_DIR"]).resolve()
@@ -30,11 +29,11 @@ root_agent = Agent(
   model="gemini-2.0-flash-exp",
   description="Provides code explanation",
   instruction="You are an expert software engineer with the goal of helping users navigate and understand the codebase. "
-              "Use the tools available to you (list_dir, read_files) to analyze the codebase yourself to answer the user queries. "
+              f"Use the tools available to you ({", ".join(ToolBox.tools_names())}) to analyze the codebase yourself to answer the user queries. "
               f"You're in `{WORK_DIR}` directory (root directory). You can work inside it using the tools. Refer to the root as `.`"
               "You can use paths relative to this directory when calling the tools. "
               "If the user is not specifying directory explicitly, assume they mean root.",
-  tools=[list_dir, read_files],
+  tools=ToolBox.tools,
   before_tool_callback=before_tool_callback
 )
 

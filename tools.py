@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from google.adk.tools.tool_context import ToolContext
 
@@ -29,6 +30,14 @@ def read_files(paths: list[str], tool_context: ToolContext) -> str:
   """
   pieces = [f"{p}\n\n{_read_file(p, tool_context)}" for p in paths]
   return "\n".join(pieces)
+
+
+class ToolBox:
+  tools = [list_dir, read_files]
+
+  @classmethod
+  def tools_names(cls) -> list[str]:
+    return [tool.__name__ for tool in cls.tools]
 
 
 def _read_file(path: str, tool_context: ToolContext) -> str:
