@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 
-from tools import find, grep, tree, CTX_KEY
+from tools import find, grep, tree, CTX_KEY, MAX_OUT_LENGTH
 
 
 # Dummy classes to simulate the OxContext and ToolContext required by the commands.
@@ -110,8 +110,7 @@ def test_grep_truncation(tmp_path: Path, tool_context: DummyToolContext):
     output = grep("foo", [str(test_file)], tool_context)
 
     assert "[Output truncated]" in output, "Expected '[Output truncated]' message not found."
-    max_length = 4096  # For grep, we assume 4096 is the hard limit.
-    assert len(output) <= max_length, "Output exceeds the maximum allowed length."
+    assert len(output) <= MAX_OUT_LENGTH, "Output exceeds the maximum allowed length."
 
 
 def test_tree_directory_only(tmp_path: Path, tool_context: DummyToolContext):
