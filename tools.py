@@ -20,7 +20,6 @@ def list_dir(path: str, tool_context: ToolContext) -> str:
     entries = sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
     if not entries:
       return f"{path} is an empty directory"
-
     return "\n".join(entry.name for entry in entries)
   except Exception as e:
     return f"Error reading directory: {str(e)}"
@@ -122,6 +121,53 @@ def grep(pattern: str, paths: list[str], tool_context: ToolContext) -> str:
     return f"No matches found for pattern '{pattern}'"
 
 
+def tree(path: str, tool_context: ToolContext, max_depth: int = 1, include_files: bool = False,
+         max_output: int = 4096) -> str:
+  """
+  Uses the system's 'tree' command to print a tree-like directory structure starting at the given path.
+
+  Args:
+      path: The directory path from which to start listing.
+      tool_context: The ToolContext used for path resolution.
+      max_depth: Maximum depth of directories to display.
+      include_files: If False, shows only directories; otherwise, lists both files and directories.
+      max_output: Maximum number of characters allowed in the command output.
+
+  Returns:
+      A string representing the tree structure or an error message.
+  """
+  try:
+    p = _resolve_path(path, tool_context)
+  except ValueError as e:
+    return str(e)
+
+  if not p.is_dir():
+    return f"{path} is not a directory"
+
+  if max_depth < 1:
+    return "max_depth must be at least 1"
+
+  # Build the 'tree' command arguments.
+  # -L specifies the maximum display depth.
+  # -d restricts output to directories only (if include_files is False).
+  cmd = ["tree", "-L", str(max_depth)]
+  if not include_files:
+    cmd.append("-d")
+  cmd.append(str(p))
+
+  try:
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    output = result.stdout if result.stdout else result.stderr
+  except FileNotFoundError:
+    return "The 'tree' command is not available on this system."
+  except Exception as e:
+    return f"Error running tree command: {str(e)}"
+
+  if len(output) > max_output:
+    output = output[:max_output] + "\n[Output truncated]"
+  return output
+
+
 def _expand_glob_path(pattern: str, tool_context: ToolContext) -> list[Path]:
   """
   Expands a wildcard pattern into a list of matching Path objects.
@@ -133,10 +179,8 @@ def _expand_glob_path(pattern: str, tool_context: ToolContext) -> list[Path]:
   # Create a Path from the pattern. If it's not absolute, treat it as relative to root.
   p = Path(pattern)
   if not p.is_absolute():
-    p = (root / p)
+    p = root / p
 
-  # Use glob to expand the wildcard pattern.
-  # p.parent is the directory part and p.name is the glob pattern.
   try:
     matches = list(p.parent.glob(p.name))
   except Exception as e:
@@ -149,14 +193,13 @@ def _expand_glob_path(pattern: str, tool_context: ToolContext) -> list[Path]:
       match.relative_to(root)
       valid_matches.append(match.resolve())
     except ValueError:
-      # The match is not within the allowed root.
       continue
   return valid_matches
 
 
 class ToolBox:
-  # Register all tools including list_dir, read_files, find, and grep.
-  tools = [list_dir, read_files, find, grep]
+  # Register all tools including list_dir, read_files, find, grep, and now tree.
+  tools = [list_dir, read_files, find, grep, tree]
 
   @classmethod
   def tools_names(cls) -> list[str]:
