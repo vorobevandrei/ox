@@ -71,7 +71,7 @@ def grep(pattern: str, paths: list[str], tool_context: ToolContext) -> str:
   and includes 2 lines of context before and after each match.
 
   This updated version supports wildcard patterns in file paths (e.g. '*.txt') and limits
-  the overall output size to avoid overflowing the LLM context.
+  the overall output size to avoid overflowing.
 
   Returns a newline separated list of all matching lines or an informative message if no match is found.
   """
