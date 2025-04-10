@@ -7,7 +7,7 @@ import asyncio
 from google.genai import types
 
 from context import OxContext
-from tools import list_dir
+from tools import list_dir, read_file
 
 APP_NAME = "ox"
 USER_ID = "ox_user"
@@ -19,13 +19,9 @@ def make_runner() -> Runner:
     name="weather_agent_v1",
     model="gemini-2.0-flash-exp",
     description="Provides code explanation",
-    instruction="You are a helpful weather assistant. Your primary goal is to provide current weather reports. "
-                "When the user asks for the weather in a specific city, "
-                "you MUST use the 'get_weather' tool to find the information. "
-                "Analyze the tool's response: if the status is 'error', inform the user politely about the error message. "
-                "If the status is 'success', present the weather 'report' clearly and concisely to the user. "
-                "Only use the tool when a city is mentioned for a weather request.",
-    tools=[list_dir],
+    instruction="You are an expert software engineer with the goal of helping users navigate and understand the codebase. "
+                "Use the tools available to you (list_dir, read_file) to analyze the codebase yourself to answer the user queries.",
+    tools=[list_dir, read_file],
   )
 
   session_service = InMemorySessionService()
