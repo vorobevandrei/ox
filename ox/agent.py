@@ -11,7 +11,7 @@ from google.adk.tools.tool_context import ToolContext
 from google.adk.tools.base_tool import BaseTool
 
 from context import OxContext, CTX_KEY
-from tools import list_dir, read_file
+from tools import list_dir, read_files
 import logging
 
 
@@ -30,11 +30,11 @@ root_agent = Agent(
   model="gemini-2.0-flash-exp",
   description="Provides code explanation",
   instruction="You are an expert software engineer with the goal of helping users navigate and understand the codebase. "
-              "Use the tools available to you (list_dir, read_file) to analyze the codebase yourself to answer the user queries. "
-              f"You're in `{WORK_DIR}` directory (root directory). You can work inside it using the tools. "
+              "Use the tools available to you (list_dir, read_files) to analyze the codebase yourself to answer the user queries. "
+              f"You're in `{WORK_DIR}` directory (root directory). You can work inside it using the tools. Refer to the root as `.`"
               "You can use paths relative to this directory when calling the tools. "
               "If the user is not specifying directory explicitly, assume they mean root.",
-  tools=[list_dir, read_file],
+  tools=[list_dir, read_files],
   before_tool_callback=before_tool_callback
 )
 

@@ -23,19 +23,27 @@ def list_dir(path: str, tool_context: ToolContext) -> str:
         return f"Error reading directory: {str(e)}"
 
 
-def read_file(path: str, tool_context: ToolContext) -> str:
-    try:
-        p = _resolve_path(path, tool_context)
-    except ValueError as e:
-        return str(e)
+def read_files(paths: list[str], tool_context: ToolContext) -> str:
+  """
+  Reads the content of each file specified in `paths`. Always prefer reading multiple files at once if possible.
+  """
+  pieces = [f"{p}\n\n{_read_file(p, tool_context)}" for p in paths]
+  return "\n".join(pieces)
 
-    if not p.is_file():
-        return f"{path} is not a file"
 
-    try:
-        return p.read_text(encoding="utf-8")
-    except Exception as e:
-        return f"Failed to read file: {str(e)}"
+def _read_file(path: str, tool_context: ToolContext) -> str:
+  try:
+    p = _resolve_path(path, tool_context)
+  except ValueError as e:
+    return str(e)
+
+  if not p.is_file():
+    return f"{path} is not a file"
+
+  try:
+    return p.read_text(encoding="utf-8")
+  except Exception as e:
+    return f"Failed to read file: {str(e)}"
 
 
 def _resolve_path(path_str: str, tool_context: ToolContext) -> Path:
