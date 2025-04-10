@@ -1,14 +1,45 @@
+import os
 from pathlib import Path
+from typing import Any, Optional, Dict
 
 from dotenv import load_dotenv
 from google.adk import Runner, Agent
 from google.adk.sessions import InMemorySessionService
 import asyncio
 from google.genai import types
+from google.adk.tools.tool_context import ToolContext
+from google.adk.tools.base_tool import BaseTool
 
-from context import OxContext
+from context import OxContext, CTX_KEY
 from tools import list_dir, read_file
 import logging
+
+
+load_dotenv(override=True)
+WORK_DIR = Path(os.environ["WORK_DIR"]).resolve()
+
+
+def before_tool_callback(
+    tool: BaseTool, args: dict[str, Any], tool_context: ToolContext
+) -> Optional[Dict]:
+  tool_context.state[CTX_KEY] = OxContext(WORK_DIR)
+
+
+root_agent = Agent(
+  name="weather_agent_v1",
+  model="gemini-2.0-flash-exp",
+  description="Provides code explanation",
+  instruction="You are an expert software engineer with the goal of helping users navigate and understand the codebase. "
+              "Use the tools available to you (list_dir, read_file) to analyze the codebase yourself to answer the user queries. "
+              f"You're in `{WORK_DIR}` directory (root directory). You can work inside it using the tools. "
+              "You can use paths relative to this directory when calling the tools. "
+              "If the user is not specifying directory explicitly, assume they mean root.",
+  tools=[list_dir, read_file],
+  before_tool_callback=before_tool_callback
+)
+
+
+# the rest is for running without adk
 
 
 APP_NAME = "ox"
@@ -17,28 +48,16 @@ SESSION_ID = "ox_session"
 
 
 def make_runner(root: Path) -> Runner:
-  agent = Agent(
-    name="weather_agent_v1",
-    model="gemini-2.0-flash-exp",
-    description="Provides code explanation",
-    instruction="You are an expert software engineer with the goal of helping users navigate and understand the codebase. "
-                "Use the tools available to you (list_dir, read_file) to analyze the codebase yourself to answer the user queries. "
-                f"You're in `{root}` directory (root directory). You can work inside it using the tools. "
-                "You can use paths relative to this directory when calling the tools. "
-                "If the user is not specifying directory explicitly, assume they mean root.",
-    tools=[list_dir, read_file],
-  )
-
   session_service = InMemorySessionService()
   session_service.create_session(
     app_name=APP_NAME,
     user_id=USER_ID,
     session_id=SESSION_ID,
-    state={"ox_ctx": OxContext(root)}
+    state={CTX_KEY: OxContext(root)}
   )
 
   runner = Runner(
-    agent=agent,
+    agent=root_agent,
     app_name=APP_NAME,
     session_service=session_service
   )
@@ -66,9 +85,8 @@ async def call_agent_async(runner: Runner, query: str):
 async def main():
   # suppress annoying warning
   logging.getLogger("google_genai.types").setLevel(logging.ERROR)
-
-  r = make_runner(Path("/Users/vorobevandrei/root/ox"))
-  await call_agent_async(r, "What files are in this directory?")
+  runner = make_runner(Path("/Users/vorobevandrei/root/code-migration"))
+  await call_agent_async(runner, "What files are in this directory?")
 
 
 if __name__ == "__main__":

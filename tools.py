@@ -1,7 +1,7 @@
 from pathlib import Path
 from google.adk.tools.tool_context import ToolContext
 
-from context import OxContext
+from context import OxContext, CTX_KEY
 
 
 def list_dir(path: str, tool_context: ToolContext) -> str:
@@ -39,7 +39,7 @@ def read_file(path: str, tool_context: ToolContext) -> str:
 
 
 def _resolve_path(path_str: str, tool_context: ToolContext) -> Path:
-  ctx: OxContext = tool_context.state["ox_ctx"]
+  ctx: OxContext = tool_context.state[CTX_KEY]
   root = ctx.root
 
   try:
