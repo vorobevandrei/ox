@@ -50,8 +50,6 @@ def find(path: str, pattern: str, tool_context: ToolContext) -> str:
   if not p.is_dir():
     return f"{path} is not a directory"
 
-  # Build the find command.
-  # Changing directory to `p` ensures output paths are relative.
   cmd_pattern = shlex.quote("*" + pattern + "*")
   cmd = f"find . -iname {cmd_pattern}"
   output = _run_cmd(cmd, cwd=str(p))
@@ -79,9 +77,7 @@ def grep(pattern: str, paths: list[str], tool_context: ToolContext) -> str:
   quoted_pattern = shlex.quote(pattern)
 
   for path_str in paths:
-    # Check if the provided path string contains a wildcard character.
     if any(wc in path_str for wc in ['*', '?', '[']):
-      # Expand the glob pattern.
       matched_files = _expand_glob_path(path_str, tool_context)
       if not matched_files:
         result_lines.append(f"{path_str} did not match any files")
@@ -96,7 +92,6 @@ def grep(pattern: str, paths: list[str], tool_context: ToolContext) -> str:
         if output:
           result_lines.append(output)
     else:
-      # Process normally if no wildcard characters are present.
       try:
         file_path = _resolve_path(path_str, tool_context)
       except ValueError as e:
@@ -114,7 +109,8 @@ def grep(pattern: str, paths: list[str], tool_context: ToolContext) -> str:
 
   combined_output = "\n".join(result_lines)
   if len(combined_output) > MAX_GREP_OUTPUT:
-    combined_output = combined_output[:MAX_GREP_OUTPUT] + "\n[Output truncated]"
+    suffix = "\n[Output truncated]"
+    combined_output = combined_output[:MAX_GREP_OUTPUT - len(suffix)] + suffix
   if combined_output:
     return combined_output
   else:
@@ -128,10 +124,11 @@ def tree(path: str, tool_context: ToolContext, max_depth: int = 1, include_files
 
   Args:
       path: The directory path from which to start listing.
-      tool_context: The ToolContext used for path resolution.
-      max_depth: Maximum depth of directories to display.
-      include_files: If False, shows only directories; otherwise, lists both files and directories.
-      max_output: Maximum number of characters allowed in the command output.
+      tool_context: The ToolContext used for resolving paths.
+      max_depth: Maximum depth (counting the starting directory as level 1) to display.
+                 For example, if max_depth is 2, only the starting directory and its immediate children will be shown.
+      include_files: If False, only directories are shown; if True, both files and directories are listed.
+      max_output: Maximum number of characters allowed in the final output.
 
   Returns:
       A string representing the tree structure or an error message.
@@ -147,9 +144,7 @@ def tree(path: str, tool_context: ToolContext, max_depth: int = 1, include_files
   if max_depth < 1:
     return "max_depth must be at least 1"
 
-  # Build the 'tree' command arguments.
-  # -L specifies the maximum display depth.
-  # -d restricts output to directories only (if include_files is False).
+  # Build the tree command.
   cmd = ["tree", "-L", str(max_depth)]
   if not include_files:
     cmd.append("-d")
@@ -157,14 +152,44 @@ def tree(path: str, tool_context: ToolContext, max_depth: int = 1, include_files
 
   try:
     result = subprocess.run(cmd, capture_output=True, text=True)
-    output = result.stdout if result.stdout else result.stderr
+    raw_output = result.stdout if result.stdout else result.stderr
   except FileNotFoundError:
     return "The 'tree' command is not available on this system."
   except Exception as e:
     return f"Error running tree command: {str(e)}"
 
+  # Post-process the output to enforce the intended max_depth.
+  # In many tree command implementations the starting directory is not counted in -L.
+  # To achieve the effect that max_depth==2 means "show only the starting directory and its immediate children",
+  # we remove any lines (entries) whose indent level exceeds (max_depth - 2).
+  lines = raw_output.splitlines()
+  # If the first line equals the starting directory path, keep it as header.
+  if lines and lines[0].strip() == str(p):
+    header = lines[0]
+    remaining_lines = lines[1:]
+  else:
+    header = ""
+    remaining_lines = lines
+
+  allowed_indent = max_depth - 2  # For max_depth==2, allowed_indent==0 (i.e. no grandchildren).
+  filtered_lines = []
+  for line in remaining_lines:
+    stripped = line.lstrip()
+    if stripped.startswith("└──") or stripped.startswith("├──"):
+      indent_level = (len(line) - len(line.lstrip(" "))) // 4
+      if indent_level <= allowed_indent:
+        filtered_lines.append(line)
+    else:
+      # Keep summary lines and any non-connector lines.
+      filtered_lines.append(line)
+
+  output = (header + "\n" + "\n".join(filtered_lines)) if header else "\n".join(filtered_lines)
+
+  # Enforce maximum output size.
   if len(output) > max_output:
-    output = output[:max_output] + "\n[Output truncated]"
+    notice = "\n[Output truncated]"
+    allowed = max_output - len(notice)
+    output = output[:allowed] + notice
   return output
 
 
@@ -176,7 +201,6 @@ def _expand_glob_path(pattern: str, tool_context: ToolContext) -> list[Path]:
   ctx: OxContext = tool_context.state[CTX_KEY]
   root = ctx.root
 
-  # Create a Path from the pattern. If it's not absolute, treat it as relative to root.
   p = Path(pattern)
   if not p.is_absolute():
     p = root / p
@@ -186,7 +210,6 @@ def _expand_glob_path(pattern: str, tool_context: ToolContext) -> list[Path]:
   except Exception as e:
     raise ValueError(f"Invalid glob pattern: {pattern} ({e})")
 
-  # Filter matches to include only those within the root.
   valid_matches = []
   for match in matches:
     try:
@@ -198,7 +221,7 @@ def _expand_glob_path(pattern: str, tool_context: ToolContext) -> list[Path]:
 
 
 class ToolBox:
-  # Register all tools including list_dir, read_files, find, grep, and now tree.
+  # Register all tools including list_dir, read_files, find, grep, and tree.
   tools = [list_dir, read_files, find, grep, tree]
 
   @classmethod
