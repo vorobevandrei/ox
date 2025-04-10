@@ -36,8 +36,7 @@ def main(
         resolve_path=True, # Ensure absolute path
     ),
     model_name: str = typer.Option(
-        # "gemini-1.5-pro-latest", # Use 1.5 Pro for better function calling generally
-        "gemini-1.5-flash-latest", # Or Flash for faster responses if sufficient
+        "gemini-2.0-flash",
         "--model",
         "-m",
         help="The Gemini model to use (must support function calling)."
