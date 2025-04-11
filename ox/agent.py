@@ -25,7 +25,7 @@ def before_tool_callback(
 
 
 root_agent = Agent(
-  name="weather_agent_v1",
+  name="ox",
   model="gemini-2.0-flash-exp",
   description="Provides code explanation",
   instruction="You are an expert software engineer with the goal of helping users navigate and understand the codebase. "
