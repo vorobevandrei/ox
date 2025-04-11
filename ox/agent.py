@@ -84,7 +84,7 @@ async def call_agent_async(runner: Runner, query: str):
 async def main():
   # suppress annoying warning
   logging.getLogger("google_genai.types").setLevel(logging.ERROR)
-  runner = make_runner(Path("/Users/vorobevandrei/root/code-migration"))
+  runner = make_runner(WORK_DIR)
   await call_agent_async(runner, "What files are in this directory?")
 
 
